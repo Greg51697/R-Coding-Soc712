@@ -1,2 +1,9 @@
-# R-Coding-Soc712
-R Coding for Data Science and Analysis. Master's Class Soc 712
+#R coding for Data Science and Data Analysis
+Sociology 712 @Queens College
+
+## Projects
+
+All of my projects can be found on my RPubs account linked below!
+rmd files are also available.
+
+* RPubs Account [Projects](http://rpubs.com/gregmaghakian)
