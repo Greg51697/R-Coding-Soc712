@@ -1,4 +1,4 @@
-#R coding for Data Science and Data Analysis
+# R coding for Data Science and Data Analysis
 Sociology 712 @Queens College
 
 ## Projects
