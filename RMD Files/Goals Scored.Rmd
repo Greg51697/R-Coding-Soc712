@@ -1,0 +1,103 @@
+---
+title: "Goals Scored"
+author: "Greg Maghakian"
+date: "11/4/2018"
+output: 
+  html_document: 
+    theme: cosmo
+---
+
+```{r setup, include=FALSE,message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Zelig)
+library(tidyverse)
+library(visreg)
+library(texreg)
+library(readr)
+```
+
+#**Number of Goals Scored in NHL Games**
+
+#About the Data:
+
+Historical data set on NHL hockey, specifically, the information on a hockey game for each team. The data set has 15 features and 14,882 observations. Features include the coaches name, home or away team, team name, # of goals scored, # of hits, # of shots, giveaways, takeaways, and if the team won.
+
+
+#Importing the Hockey Data
+
+```{r warning=FALSE, message=FALSE}
+hockeyData=read_csv("/Users/gregmaghakian/Documents/Soc 712/Week 6 Zelig/Homework/gameStats.csv")
+#A Glimpse of the data
+head(hockeyData)
+#recoding HoA to factor
+hockeyData$HoA=as.factor(hockeyData$HoA)
+```
+
+##**An analysis of Goals Scored by Home Field Advantage**
+
+A hockey game is fast-paced and action packed. To win an NHL game, a team must score more goals than the opponent. Goals however are normally hard to come by, and therefore, extracting any information on what features contribute to having higher goals scored is very valuable! By watching hockey for years and reading articles/looking at stats, I have come to realize that a team playing at home usually has more wins than when playing on the road. I want to put this hypothesis to the test by explaining number of goals scored (goals) with if a team has home-field advantage or not (HoA).  
+
+To conduct this analysis, we will run a Poisson regression model since we are dealing with count data for the number of goals scored in a game.
+
+
+#Picking our specified model based on AIC/BIC
+We will start with our main explanatory variable--HoA (Home or Away)--and add features to try to best explain Number of Goals Scored. We will then choose our working model based on the lowest AIC/BIC score.  
+
+
+```{r warning=FALSE, message=FALSE,results='asis'}
+
+reg1=zelig(goals~HoA,model = "poisson",data=hockeyData,cite=F)
+reg2=zelig(goals~HoA+faceOffWinPercentage,model = "poisson",data=hockeyData,cite=F)
+reg3=zelig(goals~HoA+faceOffWinPercentage+shots,model = "poisson",data=hockeyData,cite=F)
+reg4=zelig(goals~HoA+faceOffWinPercentage+shots+hits,model = "poisson",data=hockeyData,cite=F)
+reg5=zelig(goals~HoA+faceOffWinPercentage+shots+hits+powerPlayOpportunities,model = "poisson",data=hockeyData,cite=F)
+reg6=zelig(goals~HoA+faceOffWinPercentage+shots+hits+powerPlayOpportunities+giveaways,model = "poisson",data=hockeyData,cite=F)
+reg7=zelig(goals~HoA+faceOffWinPercentage+shots+hits+powerPlayOpportunities+giveaways+takeaways,model = "poisson",data=hockeyData,cite=F)
+
+
+
+
+htmlreg(list(reg1,reg2,reg3,reg4,reg5,reg6,reg7),digits = 5)
+```
+
+Based on both AIC and BIC, the lowest score for both is reg7, which we will use for our simulation and analysis!
+
+
+#Setting the counterfactuals, simulating our data, and plotting
+
+Let us set our counterfactuals for a team being home or away. 
+
+```{r}
+reg7$setx(HoA="away")
+reg7$setx1(HoA="home")
+```
+
+Simulating our Data:
+```{r}
+reg7$sim()
+```
+Plotting our Data:
+```{r fig.height=9,fig.width=7}
+reg7$graph()
+```
+
+
+
+Here, we set up a first difference simulation for HoA where all other features in regression 7 are set to their default values (i.e. mode, median, etc.). We set X to be a team that is playing away, and X1 to be a team that is playing at home.  
+
+From looking at the visuals, we can see that a team that plays at home has an expected value of scoring about .17 more goals than if a team is playing away. Breaking it down more, a team playing away has an expected value of scoring about 2.6 goals whereas a team playing at home has an expected value of scoring about 2.79 goals.
+
+
+#A further look
+```{r}
+reg7$get_qi(xvalue="x1",qi="fd")%>%
+  data.frame()%>%
+  summary()
+
+```
+
+Thinking about the numbers more, we can gain further insight about our data. Looking at the mean expected value and interquartile Range for first difference between home and away teams, we can see that there really isn't much of a difference when it comes to number of goals scored. However, HoA (being home or away), by the results for our best model, regression 7, is statistically significant at the .1% level. This means that our feature is significant and the coefficient, no matter how small, does have an impact on the number of goals scored. This is quite important as in hockey, knowing what gives you an edge, even a small one, can help determine whether a team wins a championship or not.  
+
+
+#In Conclusion:
+To summarize, even though the difference is small, there is a statistically significant relationship between a teams home field advantage and the number of goals that team scores. A team that is playing at home, really does have "home field advantage" as they have an expected value of .17 more goals than a team that plays away.

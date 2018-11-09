@@ -1,0 +1,120 @@
+---
+title: "Homework_3_maxLik"
+author: "Greg Maghakian"
+date: "9/30/2018"
+output: html_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(maxLik, Zelig)
+```
+
+
+#Relationship between income and education
+```{r,warning=F,message=F}
+data(turnout)
+head(turnout)
+#We have some discrete variables like race and continuous variables like income
+
+
+#relationship between income and education
+#log-likelihood function
+ols.lf <- function(param) {
+  beta <- param[-1]
+  sigma <- param[1]
+  y <- as.vector(turnout$income)
+  x <- cbind(1, turnout$educate)
+  mu <- x%*%beta
+  sum(dnorm(y, mu, sigma, log = TRUE))}    
+
+#Maximizing log-likelihood using maxLik
+
+mle_ols <- maxLik(logLik = ols.lf, start = c(sigma = 1, beta1 = 1, beta2 = 1))
+summary(mle_ols)
+
+
+#Using OLS lm function to replicate same results
+
+summary(lm(income ~ educate, data = turnout))
+``` 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For the Maximum Likelihood Estimation, we specify a models distribution and then the estimator will choose the parameters that maximize the likelihood/log-likelihood function. In an essence, we want the location that maximized the likelihood of observing the weights we measured. For the above problem, we are looking at maximizing the likelihood estimate of the mean or average. This means that we will find the parameters that best fit the mean and that maximizes the likelihood of observing those weights.   
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For instance, here we get returned beta1 and beta2. Beta1 is the intercept and can be read as "Ceteris Paribus, with no years of education, average income is -.65 units(however income was measured)" Beta2, our slope, can be read as "Ceteris Paribus, an increase in education by 1 year on average will increase income by .37 units". Our sigma, 2.527 is the residual standard error of our model. 
+
+
+#Does education influence income inequality?
+
+```{r,warning=F,message=F}
+
+ols.lf2 <- function(param) {
+  mu <- param[1]
+  theta <- param[-1]
+  y <- as.vector(turnout$income)
+  x <- cbind(1, turnout$educate)
+  sigma <- x%*%theta
+  sum(dnorm(y, mu, sigma, log = TRUE))
+}    
+
+mle_ols2 <- maxLik(logLik = ols.lf2, start = c(mu = 1, theta1 = 1, theta2 = 1))
+summary(mle_ols2)
+
+```
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Here, instead of getting mean likelihood, we are looking to find max likelihood of weights for changes in standard deviation. This allows us to interpret the data differently and understand a different working relationship between variables. So now instead of our residual standard error being returned as sd, we get a residual mean error returned as 3.5. Our theta1, the new intercept can be read as "Ceteris paribus, 0 years of education will lead to a standard deviation of income of 1.46". The new slope, theta2, can be read as "Ceteris paribus, an increase in education by 1 year will increase the standard deviation of income by .109". Instead of using the mean parameters to understand mean changes, we can use standard deviation to understand that increase in education will cause inequality in income through changes in sigma. 
+
+
+
+#Let us add age to both models. 
+
+```{r,warning=F,message=F}
+ols.lf.age <- function(param) {
+  beta <- param[-1]
+  sigma <- param[1]
+  y <- as.vector(turnout$income)
+  x <- cbind(1, turnout$educate,turnout$age)
+  mu <- x%*%beta
+  sum(dnorm(y, mu, sigma, log = TRUE))}    
+
+#Maximizing log-likelihood using maxLik
+
+mle_ols_age <- maxLik(logLik = ols.lf.age, start = c(sigma = 1, beta1 = 1, beta2 = 1,beta3=1))
+summary(mle_ols_age)
+
+#Comparing to ols
+
+summary(lm(income~educate+age,data=turnout))
+
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Adding age as a predictor alongside education in order to predict income changes the parameters and gives us different results. Our intercept is -.446. Our slope for education is still around .37, but our age parameter is -.003. This means that "Ceteris paribus, an increase in age by one year will decrease income on average by .003 units". This doesn't seem to make much sense, and in fact, this predictor is not statistically significant, while educate is! 
+
+
+
+```{r,warning=F,message=F}
+
+ols.lf2.age <- function(param) {
+  mu <- param[1]
+  theta <- param[-1]
+  y <- as.vector(turnout$income)
+  x <- cbind(1, turnout$educate,turnout$age)
+  sigma <- x%*%theta
+  sum(dnorm(y, mu, sigma, log = TRUE))
+}    
+
+mle_ols2_age <- maxLik(logLik = ols.lf2.age, start = c(mu = 1, theta1 = 1, theta2 = 1,theta3=1))
+summary(mle_ols2_age)
+
+
+
+```
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Here we take a look at changes in standard deviation with included predictor age. Our intercept is .98 and our new slope for education is .766. Our slope for age, .153, can be interpreted as "Ceteris paribus, an increase in age by one year will increase standard deviation of income by .153 units." Since both the age and education coefficients are positive, this hints at income inequality being caused by both increases in age and education.
+
+
+
+
+
+
+
+

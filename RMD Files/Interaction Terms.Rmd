@@ -1,0 +1,298 @@
+---
+title: 'Homework 5: Interaction Terms'
+author: "Greg Maghakian"
+date: "10/21/2018"
+output: 
+  html_document: 
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Description of Data
+
+I am using a new data set because the biopsy data set was quite boring with regards to looking at anything other than the prediction of cancer. This Spotify data set that I am using was pulled using the Spotify API and the spotifyR package. It contains 256,789 tracks that are specific to 62 countries. This spans about two years from 2017-Sept. 2018 and each country's track-list is comprised of the top 50 songs from each week.  
+  
+**I am interested in looking at the relationship between a country and its valence. Valence is defined by the emotion of a music. It ranges from 0-10, with 10 being the happiest that a song can be. Here I am using only two countries, United States and Argentina.**
+
+#Importing Dataset 
+Here we are importing the spotify data set.  
+
+```{r,message=FALSE,warning=FALSE}
+pacman::p_load(Zelig,pander,texreg,lmtest,visreg,tidyverse,shiny,readr,knitr)
+data=read_csv("/Users/gregmaghakian/Documents/Econ 392W/Code/SpotifyDataFiles/tracklist_with_audio_features.csv")
+data=filter(data,Country=="United States"|Country=="Argentina")%>%
+  mutate(danceability = sjmisc::rec(danceability, rec = "0:.5=0; else=1"))
+head(data)
+dim(data)
+length(unique(data$Country))
+range(data$danceability)
+```
+Note: We re-code danceability such that 0:.5 is low danceability, and everything above that is high danceability.
+#Regression 1:
+```{r,message=FALSE,warning=FALSE}
+attach(data)
+model1=lm(valence~Country)
+model1
+```
+#Interpretation Model 1:
+
+Ceteris paribus, compared to Argentina, the United States has a valence on average that is .09 lower. Meaning, Argentina's music is happier than the United States.  
+
+Looking at the other features in this data set, let's include danceability and energy into our model as these features would seem to make sense in explaining valence. 
+
+#Regression 2:
+
+```{r}
+model2=lm(valence~Country+danceability+energy)
+model2
+```
+
+
+#Interpretation Model 2:
+Ceteris paribus, compared to Argentina, the United States has a valence on average that is .07 lower. Here we can see that, while United States' music is still sadder than Argentina's music, the coefficient for United States has become lesser, meaning that danceability and energy are helping to explain valence as well.
+
+#Regression 3:
+
+Let's add an interaction between country and danceability to try and capture valence between countries better. 
+
+```{r}
+model3=lm(valence~Country+danceability+energy+Country*danceability)
+model3
+```
+```{r}
+data %>%
+group_by(danceability,Country) %>%
+summarize(Mean_Valence= mean(valence)) %>%
+  spread(danceability, Mean_Valence)%>%
+kable()
+```
+
+#Interpretation Model 3 and Tabling:
+
+By this tabling, we can see that our inclusion of an interaction term between country and danceability makes sense with regards to valence. Looking at the table, we see that have a danceable song leads to having a higher average valence and therefore a happier song for each country. This is visible in the regression results of model 3 as well as the United States interacted with danceability will have a lower valence than Argentina.
+
+
+```{r}
+#htmlreg(list(model1,model2,model3))
+```
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<table cellspacing="0" align="center" style="border: none;">
+<caption align="bottom" style="margin-top:0.3em;">Statistical models</caption>
+<tr>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b></b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>Model 1</b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>Model 2</b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>Model 3</b></th>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">(Intercept)</td>
+<td style="padding-right: 12px; border: none;">0.54<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.12<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.09<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.00)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">CountryUnited States</td>
+<td style="padding-right: 12px; border: none;">-0.09<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">-0.07<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">-0.02</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.00)</td>
+<td style="padding-right: 12px; border: none;">(0.00)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">danceability</td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">0.17<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.20<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">energy</td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">0.41<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.41<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">CountryUnited States:danceability</td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">-0.06<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="border-top: 1px solid black;">R<sup style="vertical-align: 0px;">2</sup></td>
+<td style="border-top: 1px solid black;">0.04</td>
+<td style="border-top: 1px solid black;">0.22</td>
+<td style="border-top: 1px solid black;">0.23</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">Adj. R<sup style="vertical-align: 0px;">2</sup></td>
+<td style="padding-right: 12px; border: none;">0.04</td>
+<td style="padding-right: 12px; border: none;">0.22</td>
+<td style="padding-right: 12px; border: none;">0.23</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">Num. obs.</td>
+<td style="padding-right: 12px; border: none;">9000</td>
+<td style="padding-right: 12px; border: none;">9000</td>
+<td style="padding-right: 12px; border: none;">9000</td>
+</tr>
+<tr>
+<td style="border-bottom: 2px solid black;">RMSE</td>
+<td style="border-bottom: 2px solid black;">0.23</td>
+<td style="border-bottom: 2px solid black;">0.20</td>
+<td style="border-bottom: 2px solid black;">0.20</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;" colspan="5"><span style="font-size:0.8em"><sup style="vertical-align: 0px;">***</sup>p &lt; 0.001, <sup style="vertical-align: 0px;">**</sup>p &lt; 0.01, <sup style="vertical-align: 0px;">*</sup>p &lt; 0.05</span></td>
+</tr>
+</table>
+
+Looking at these results, we can see that our R^2 increases and RMSE decreases with the addition of the new features and the interaction term. Both of these indicate that our model is better capturing valence.  
+In addition to this, our interaction term in model 3 is statistically significant at all levels. 
+
+#Subgroup modeling and tabling
+
+Let's run a model using two different groups.
+
+```{r}
+#Dataset where danceability is 0 aka not as danceable 
+undanceable=data%>%
+  filter(danceability==0)
+#Dataset where danceablity is 1 aka danceable
+danceable=data%>%
+  filter(danceability==1)
+model4=lm(valence~Country*danceability,data=data)
+modelUndance=lm(valence~Country,data=undanceable)
+modelDance=lm(valence~Country,data=danceable)
+#htmlreg(list(modelUndance,modelDance,model4),custom.model.names = c("dance=0","dance=1","dance"))
+```
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<table cellspacing="0" align="center" style="border: none;">
+<caption align="bottom" style="margin-top:0.3em;">Statistical models</caption>
+<tr>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b></b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>dance=0</b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>dance=1</b></th>
+<th style="text-align: left; border-top: 2px solid black; border-bottom: 1px solid black; padding-right: 12px;"><b>dance</b></th>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">(Intercept)</td>
+<td style="padding-right: 12px; border: none;">0.35<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.57<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">0.35<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.00)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">CountryUnited States</td>
+<td style="padding-right: 12px; border: none;">-0.03<sup style="vertical-align: 0px;">**</sup></td>
+<td style="padding-right: 12px; border: none;">-0.10<sup style="vertical-align: 0px;">***</sup></td>
+<td style="padding-right: 12px; border: none;">-0.03<sup style="vertical-align: 0px;">**</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">danceability</td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">0.22<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">CountryUnited States:danceability</td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">-0.07<sup style="vertical-align: 0px;">***</sup></td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;"></td>
+<td style="padding-right: 12px; border: none;">(0.01)</td>
+</tr>
+<tr>
+<td style="border-top: 1px solid black;">R<sup style="vertical-align: 0px;">2</sup></td>
+<td style="border-top: 1px solid black;">0.01</td>
+<td style="border-top: 1px solid black;">0.05</td>
+<td style="border-top: 1px solid black;">0.13</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">Adj. R<sup style="vertical-align: 0px;">2</sup></td>
+<td style="padding-right: 12px; border: none;">0.01</td>
+<td style="padding-right: 12px; border: none;">0.05</td>
+<td style="padding-right: 12px; border: none;">0.13</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;">Num. obs.</td>
+<td style="padding-right: 12px; border: none;">1380</td>
+<td style="padding-right: 12px; border: none;">7620</td>
+<td style="padding-right: 12px; border: none;">9000</td>
+</tr>
+<tr>
+<td style="border-bottom: 2px solid black;">RMSE</td>
+<td style="border-bottom: 2px solid black;">0.19</td>
+<td style="border-bottom: 2px solid black;">0.22</td>
+<td style="border-bottom: 2px solid black;">0.22</td>
+</tr>
+<tr>
+<td style="padding-right: 12px; border: none;" colspan="5"><span style="font-size:0.8em"><sup style="vertical-align: 0px;">***</sup>p &lt; 0.001, <sup style="vertical-align: 0px;">**</sup>p &lt; 0.01, <sup style="vertical-align: 0px;">*</sup>p &lt; 0.05</span></td>
+</tr>
+</table>
+
+Looking at this output, we can see that the coefficient for dance is the same as dance=0 and the coefficient for the interaction term is the difference between the two subgroup's coefficients for Country US.Note: the dance model is a model with only the interaction term, not energy--for ease of interpretation. 
+
+
+#Visualization of Model 3
+
+```{r}
+visreg(model3, "Country",by="danceability",scale="response")
+```
+
+Looking at this graphic, we can view that Valence, or the emotion of music, is dependent upon not only country, but danceability. Argentina has both higher danceability in music and higher valence in music. Also, when a song is danceable, the valence is considerably higher than when the music is not as danceable.
+
+
+#Food for thought
+
+Looking at valence in Argentina and the US with regards to danceability, we can start to ask questions and make some predictions for why we are getting the results mentioned above. I believe that there could be a cultural aspect to Argentina in which its songs tend to be more danceable and upbeat because of how Latin American culture is structured. Furthermore, we could ask why people in the US want to listen to sadder music, even though we are an economic powerhouse. 

@@ -1,0 +1,52 @@
+---
+title: "An Analysis of FBI Crime Data (Year 2016)"
+author: "Greg Maghakian"
+date: "9/22/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(tidyverse)
+pacman::p_load(magrittr)
+```
+
+```{r}
+#Importing Data Set
+
+crime=read_csv("~/Documents/Soc 712/Week 2 Tidyverse/Homework/crimedata.csv", col_names = TRUE )
+head(crime)
+#Removing Duplicated variable names
+crime=crime[-1,]
+names(crime)
+crime1= select(crime,'Name of Area', 'Qualifying Name', 'State', 'County', 'Total Population (2016 est.)', 'Total Violent Crimes', 'Total Violent Crimes Rate', 'Total Property Crimes', 'Arsons', 'Arsons Rate') %>% arrange(State)
+head(crime1)
+#Average Arson Crime for the United States
+summarize(crime1,Arson=mean(as.numeric(Arsons),na.rm = TRUE))
+#Selecting New York
+NewYorkCrime=filter(crime1,State==36)
+#Average Arson Crime for New York
+summarize(NewYorkCrime,Arson=mean(as.numeric(Arsons),na.rm = TRUE))
+#Nassau Vs. Suffolk
+CountyCrime=filter(NewYorkCrime, County=="103"|County=="059"|County=="AAA")
+CountyCrime
+#Merging the two data observations for Suffolk County
+CountyCrime[2,8]=CountyCrime[3,8]
+CountyCrime[2,9]=CountyCrime[3,9]
+CountyCrime
+#Removing Suffolk Police Dept
+CountyCrime=filter(CountyCrime,County!="AAA")
+#Only Selecting Arsons for Suffolk and Nassau County
+CountyArsons=select(CountyCrime,'Name of Area', Arsons)
+CountyArsons
+table(CountyArsons)
+#Suffolk County had more arsons than Nassau County in 2016
+
+
+
+
+
+
+
+
+``` 

@@ -1,0 +1,240 @@
+---
+title: "Homework 6 Zelig"
+author: "Greg Maghakian"
+date: "10/27/2018"
+output:
+  html_document:
+    theme: cosmo
+  pdf_document: default
+---
+
+```{r setup, include=FALSE,message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Zelig)
+library(titanic)
+library(radiant.data)
+library(tidyverse)
+```
+
+#Zelig 5 Demo
+Redoing the in-class code with Zelig 5 syntax
+```{r,warning=FALSE,message=FALSE}
+data("titanic")
+titanic=titanic %>%
+  mutate(surv = as.integer(survived)) %>% 
+  mutate(survival = sjmisc::rec(surv, rec = "2=0; 1=1")) %>% 
+  select(pclass, survived, survival, everything())
+z5=zlogit$new()
+z5$zelig(survival ~ age + sex * pclass + fare, data = titanic)
+```
+Here I am calling the titanic data, creating new features with mutate (recoding for a logit) and running the logit with Zelig.
+
+#Age Effect
+Simulate expected values for age, assigning all other features to their respective default values (i.e median/mode) and graph it
+```{r}
+##Mode(titanic$sex)
+a.range = min(titanic$age):max(titanic$age)
+z5$setrange(age=a.range)
+z5$sim()
+z5$graph()
+```
+
+
+The expected value of survival in the titanic decreases as age increases with all other features set to their default values (i.e for males since it is the mode of our factor class sex).  
+For everything not specified in our setx or setrange, the default value will be assigned. 
+
+#Fare Effect
+Simulate expected values for fare, assigning all other features to their respective default values (i.e median/mode) and graph it
+```{r}
+f.range = min(titanic$fare):max(titanic$fare)
+z5$setrange(fare=f.range)
+z5$sim()
+z5$graph()
+```
+
+
+
+The expected value of surviving as fare increases seems to remain almost constant. There is a small linear downward sloping trend, but it is very very minor. Maybe from fare=0 to fare=500 the expected value of survival decreases by .075. This is interesting as you'd think that a greater fare, even for men, would increase survival chances, but instead it decreases. This could be the chivalry angle that we talked about in class. 
+#Sex Difference
+Looking at first difference for male and female, all other features set to default values.
+```{r fig.show='hide'}
+z5=zlogit$new()
+z5$zelig(survival ~ age + sex * pclass + fare, data = titanic)
+z5$setx(sex="male")
+z5$setx1(sex="female")
+z5$sim()
+z5$graph()
+
+```
+
+![](/Users/gregmaghakian/Desktop/11.png) 
+
+
+Looking at the expected value and predicted value of survival between male and female, we see a greater chance of survival for females in both categories. Females have about an expected value that is greater by .25 as E(Y|Male) is about .13 and E(Y|Female) is about .38.
+#Class Variation
+Look at variation in expected value of survival between male and female across 1st, 2nd, and 3rd class. All other features set to default values.
+```{r fig.show='hide'}
+#1st
+z5=zlogit$new()
+z5$zelig(survival ~ age + sex * pclass + fare, data = titanic)
+z5$setx(sex="male",pclass="1st")
+z5$setx1(sex="female",pclass="1st")
+z5$sim()
+z5$graph()
+```
+![](/Users/gregmaghakian/Desktop/1.png) 
+
+For 1st class, the difference in expected value of survival between female and male is about .53. This is drastic and very interesting as women in this class have an almost 100% expected survival chance.  
+```{r fig.show='hide'}
+#2nd
+z5$setx(sex="male",pclass="2nd")
+z5$setx1(sex="female",pclass="2nd")
+z5$sim()
+z5$graph()
+```
+![](/Users/gregmaghakian/Desktop/2.png)
+
+For 2nd class, we see the male survival rate decrease to about .13 and the woman survival rate decrease to about .9. The first difference increases to about .76 or so which is huge! This is due to the large decrease in survival chances for males between first and 2nd class. 
+```{r fig.show='hide'}
+#3rd
+z5$setx(sex="male",pclass="3rd")
+z5$setx1(sex="female",pclass="3rd")
+z5$sim()
+z5$graph()
+```
+
+![](/Users/gregmaghakian/Desktop/3.png)
+
+
+For 3rd class, the difference between female and male survival rate drops to about .25 as women's expected survival decreases as we move down the class ranks. 
+
+```{r,results='hide'}
+z_tit <- zelig(survival ~ age + sex*pclass + fare, model = "logit", data = titanic, cite = F)
+c1x <- setx(z_tit, sex = "male", pclass = "1st")
+c1x1 <- setx(z_tit, sex = "female", pclass = "1st")
+c1s <- sim(z_tit, x = c1x, x1 = c1x1)
+c2x <- setx(z_tit, sex = "male", pclass = "2nd")
+c2x1 <- setx(z_tit, sex = "female", pclass = "2nd")
+c2s <- sim(z_tit, x = c2x, x1 = c2x1)
+c3x <- setx(z_tit, sex = "male", pclass = "3rd")
+c3x1 <- setx(z_tit, sex = "female", pclass = "3rd")
+c3s <- sim(z_tit, x = c3x, x1 = c3x1)
+d1 <- c1s$get_qi(xvalue="x1", qi="fd")
+d2 <- c2s$get_qi(xvalue="x1", qi="fd")
+d3 <- c3s$get_qi(xvalue="x1", qi="fd")
+
+dfd <- as.data.frame(cbind(d1, d2, d3))
+tidd <- dfd %>% 
+  gather(class, simv, 1:3)
+tidd %>% 
+  group_by(class) %>% 
+  summarise(mean = mean(simv), sd = sd(simv))
+```
+
+```{r}
+ggplot(tidd, aes(simv)) + geom_histogram() + facet_grid(~class)
+```
+
+
+Here we can view the expected 1st difference between female and male passengers across all 3 classes put side by side. We can see how the first difference is the lowest in 3rd class, where male and female passengers have closer expected survival rates.
+
+#An analysis of **Hockey**!
+
+One of many things I am passionate about is hockey. I found a historical data set on hockey, specifically, the information on a hockey game for each team. The data set has 15 features and 14,882 observations. Features include the coaches name, team name, # of goals scored, # of hits, # of shots, giveaways, takeaways, and if the team won.***I want to predict if a team won the game or not by using a logistic regression (since my dependent variable is binary)*** 
+
+#Reading in, recoding, and viewing some of the data
+```{r}
+hockey=read.csv("/Users/gregmaghakian/Documents/Soc 712/Week 6 Zelig/Homework/gameStats.csv")
+#recode "won" feature to 0 if lost and 1 if won
+ hockey= hockey%>%
+    mutate(won=sjmisc::rec(hockey$won,rec="FALSE=0;TRUE=1"))
+ head(hockey)
+```
+
+#Running a Logistic Regression using Zelig
+
+```{r,results='asis'}
+attach(hockey)
+h5=zelig(won~goals+shots+hits+pim+powerPlayOpportunities*powerPlayGoals+giveaways+takeaways+settled_in*HoA,model="logit",cite=F,data=hockey)
+texreg::htmlreg(h5)
+```
+#Quick Interpretations:
+I have included mostly all features except for features like game_id and team_id. I have also included the interaction terms for powerplay goals:powerplay opportunities (a powerplay is when you have a one man advantage) and whether the game is settled in regular,overtime,shootout:Home or away team.  
+
+Doing some interpretations of statistically significant coefficients, an increase in goals on average by one goal will increase the log-odds of winning the game by 1.23. Interestingly enough, an increase in shots on goal by one shot on average will **decrease** log-odds of winning the game by .04. This is counter-intuitive as hockey analysts usually lead us to believe that a team that shoots more will end up scoring more and winning more often. However, intuitively, on average a team that is home compared to an away team has a log-odds of winning that is .28 greater.  
+Looking at the interactions--both of which are not statistically significant at all--an increase in power play goals from 0 to 1 goal (when power play opportunity is 1) on average will decrease the log-odds of winning the game by .24. And, compared to an away team that had a game settled in a shootout, a home team that settles in a shootout has a log-odds of winning the game that is .31 greater on average.  
+
+**For our use of zelig, when we set our counterfactuals, the other features are set to their respective default values**
+
+
+#The effect of goals on winning a game
+
+```{r}
+#Setting goal value
+goalrange=min(hockey$goals):max(hockey$goals)
+h5$setrange(goals=goalrange)
+#simulating predicted and expected values
+h5$sim()
+#graphing
+h5$graph()
+```
+
+
+As we can see, the expected value of winning a game follows an almost logarithmic function curve as increasing goals from 2 to 3 to 4 will drastically increase a team's expected value in winning, while after that, we can view diminishing marginal expected value with each subsequent increase in goals scored. 
+
+#The effect of shots on winning a game
+```{r}
+#setting shot value
+shotrange=min(hockey$shots):max(hockey$shots)
+h5$setrange(shots=shotrange)
+#simulating predicted and expected values
+h5$sim()
+#graphing
+h5$graph()
+```
+
+
+Shots on goal has a negative linear trend when comparing it to the expected value of winning a game. As the number of shots in a game for a team increases, the expected value of winning that game decreases very close to linearly.  
+I find this interesting as again, you'd think that increasing shots on goal would increase the expected value for winning a game. However, this could indicate that a team overloading the goal with shots could be struggling and losing the game and therefore taking any shot they can to try and compensate for that.
+ 
+
+#Difference of home team vs. away team
+
+```{r fig.height=7,fig.width=12}
+h5=zelig(won~goals+shots+hits+pim+powerPlayOpportunities*powerPlayGoals+giveaways+takeaways+settled_in*HoA,model="logit",cite=F,data=hockey)
+#setting values
+h5$setx(HoA="home")
+h5$setx1(HoA="away")
+#simulating predicted and expected values
+h5$sim()
+#graphing
+h5$graph()
+#![](/Users/gregmaghakian/Desktop/hockey.png)
+```
+
+
+
+Looking at the first difference comparison between being a home and away team, we can see that the expected value and predicted value for winning a game is greater for a home team when compared to being an away team. This is to be expected as there is always a "home team advantage" for hocking/sporting events in general. 
+
+#The effect of giveaways on winning
+
+```{r}
+h5=zelig(won~goals+shots+hits+pim+powerPlayOpportunities*powerPlayGoals+giveaways+takeaways+settled_in*HoA,model="logit",cite=F,data=hockey)
+#setting values
+giveawayRange=min(hockey$giveaways):max(hockey$giveaways)
+h5$setrange(giveaways=giveawayRange)
+##simulating predicted and expected values
+h5$sim()
+#graphing
+h5$graph()
+      
+
+```
+
+
+I lastly wanted to look at the amount of giveaways a team has and how that effects the expected value of winning a game. This visualization aligns with the rationale of hockey as more giveaways (or turnovers to the other team) means that you aren't performing well on offense or defense. This then means that an increase in number of giveaways will decrease the expected value of winning a game.
+
+
+#In conclusion:
+
+Hockey is a sport that is fast paced and action packed. Winning a game involves many features, some of which I have tried to capture here. Some features quantitatively do what we have always thought of them to do--such as giveaways decreasing the expected value of winning. However, we gain insight with other features such as shots on goal where we view a decreasing expected value with an increased number of shots on goal. This shows us the relevance and need for running regressions to better understand how our world, and sports, work!
