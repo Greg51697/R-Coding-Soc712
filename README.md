@@ -1,5 +1,5 @@
 # R coding for Data Science and Data Analysis
-Sociology 712 @Queens College
+Coding projects in R spanning linear & logistic models, ggplot2, maxLik, survival analysis, random effects, and much more!
 
 ## Projects
 
